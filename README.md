@@ -2,14 +2,6 @@
 
 > A modern, competitive typing game with real-time multiplayer racing, live leaderboards, and professional UI design.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/manumishra12/mastertype)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Firebase](https://img.shields.io/badge/Firebase-039BE5?logo=Firebase&logoColor=white)](#)
-[![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)](#)
-[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)](#)
-
-## 🌟 Live Demo
-
 **🎮 [Play Now on Vercel](https://mastertype-nine.vercel.app/)** 
 
 
