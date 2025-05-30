@@ -1,4 +1,4 @@
-# 🚀 MasterType - Real-time Multiplayer Typing Game
+# mastertype ⌨️
 
 > A modern, competitive typing game with real-time multiplayer racing, live leaderboards, and professional UI design.
 
