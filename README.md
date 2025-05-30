@@ -77,6 +77,8 @@
 3. Click "Start" and begin typing
 4. Focus on accuracy and speed
 
+![Solo Image](https://raw.githubusercontent.com/manumishra12/mastertype/main/images/solo.png)
+
 ### Multiplayer Racing
 1. **Host:** 
    - Enter your name and click "Set"
@@ -95,6 +97,10 @@
    - See real-time progress of all players
    - Get announcements when someone takes the lead
    - Compete for the top spot!
+
+![Multiplayer Image](https://raw.githubusercontent.com/manumishra12/mastertype/main/images/multiplayer.png)
+
+---
 
 ## 🛠️ Tech Stack
 
