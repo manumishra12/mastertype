@@ -7,14 +7,14 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/",
-      "dest": "/mastertype.html"
+      "source": "/",
+      "destination": "/mastertype.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/mastertype.html"
+      "source": "/((?!mastertype.html).*)",
+      "destination": "/mastertype.html"
     }
   ],
   "headers": [
