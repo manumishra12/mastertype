@@ -10,21 +10,8 @@
 
 ## 🌟 Live Demo
 
-**🎮 [Play Now on Vercel](https://mastertype.vercel.app)** ← *Replace with your actual Vercel URL*
+**🎮 [Play Now on Vercel](https://mastertype-nine.vercel.app/)** 
 
-## 📹 Demo Video
-
-https://github.com/user-attachments/assets/your-video-id-here
-
-*👆 Upload a demo video to GitHub and replace this with your actual video URL*
-
-> **Video Content Suggestions:**
-> - Show solo typing practice
-> - Demonstrate room creation and joining
-> - Live multiplayer race with 2+ players
-> - Real-time leaderboard updates
-> - Winner announcements
-> - Host time controls
 
 ## ✨ Features
 
