@@ -165,6 +165,30 @@
       color: var(--text-secondary);
     }
 
+    .winner-announcement {
+      background: linear-gradient(135deg, var(--warning) 10%, #f59e0b 90%);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      text-align: center;
+      margin: 12px 0;
+      font-weight: 600;
+      font-size: 13px;
+      animation: winnerPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes winnerPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+      50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(245, 158, 11, 0.6); }
+    }
+
+    .host-controls {
+      background: rgba(37, 99, 235, 0.05);
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
     .players-list {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -180,11 +204,34 @@
       text-align: center;
       transition: all 0.2s ease;
       font-size: 12px;
+      position: relative;
     }
 
     .player-card.current-user {
       border-color: var(--accent);
       background: rgba(37, 99, 235, 0.05);
+    }
+
+    .player-card.leader {
+      border-color: var(--warning);
+      background: rgba(245, 158, 11, 0.05);
+      transform: scale(1.02);
+    }
+
+    .player-card.leader::before {
+      content: "👑";
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: var(--warning);
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
     }
 
     .player-name {
@@ -199,6 +246,18 @@
       font-size: 11px;
       color: var(--text-secondary);
       margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .player-wpm {
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .player-accuracy {
+      color: var(--success);
+      font-weight: 600;
     }
 
     .player-progress {
@@ -752,12 +811,24 @@
           <input type="text" id="roomCodeInput" placeholder="Room code" maxlength="6">
           <button class="btn-primary" onclick="joinRoom()">Join</button>
         </div>
+        <div class="input-group host-controls" id="hostControls" style="display: none;">
+          <span class="control-label">Host Time</span>
+          <select id="hostTimeSelect">
+            <option value="15">15s</option>
+            <option value="30" selected>30s</option>
+            <option value="60">60s</option>
+            <option value="120">2min</option>
+          </select>
+          <button class="btn-primary" onclick="updateRoomTime()">Update</button>
+        </div>
       </div>
 
       <div class="room-code" id="roomCodeDisplay" style="display: none;">
         <div class="room-code-value" id="roomCodeValue"></div>
         <div class="room-code-label">Share this code</div>
       </div>
+
+      <div class="winner-announcement" id="winnerAnnouncement" style="display: none;"></div>
 
       <div class="players-list" id="playersList"></div>
       
@@ -848,16 +919,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <script>
-    // 🔥 REPLACE WITH YOUR FIREBASE CONFIG 🔥
     const firebaseConfig = {
-        apiKey: "AIzaSyBY_Zw7pJQkuxqsS7ySO-YgIco-FTMUFWg",
-        authDomain: "mastertype-d87b6.firebaseapp.com",
-        databaseURL: "https://mastertype-d87b6-default-rtdb.firebaseio.com",
-        projectId: "mastertype-d87b6",
-        storageBucket: "mastertype-d87b6.firebasestorage.app",
-        messagingSenderId: "650775824981",
-        appId: "1:650775824981:web:7f3361aaac2bbda3fee2dc",
-        measurementId: "G-VKD62GGV8M"
+      apiKey: "AIzaSyBY_Zw7pJQkuxqsS7ySO-YgIco-FTMUFWg",
+      authDomain: "mastertype-d87b6.firebaseapp.com",
+      databaseURL: "https://mastertype-d87b6-default-rtdb.firebaseio.com",
+      projectId: "mastertype-d87b6",
+      storageBucket: "mastertype-d87b6.firebasestorage.app",
+      messagingSenderId: "650775824981",
+      appId: "1:650775824981:web:7f3361aaac2bbda3fee2dc",
+      measurementId: "G-VKD62GGV8M"
     };
 
     // Initialize Firebase
@@ -916,7 +986,9 @@
       currentUserId: Math.random().toString(36).substr(2, 9),
       roomRef: null,
       playersRef: null,
-      gameRef: null
+      gameRef: null,
+      currentLeader: null,
+      lastWinnerAnnouncement: 0
     };
 
     function $(id) {
@@ -1025,8 +1097,8 @@
       $('timeStat').textContent = timeLeft;
       $('errorsStat').textContent = game.errors;
 
+      // Update live leaderboard for multiplayer (less frequent than progress updates)
       if (game.mode === 'multiplayer' && multiplayer.roomCode && isFirebaseInitialized) {
-        updateMultiplayerProgress();
         updateLiveLeaderboard();
       }
 
@@ -1056,16 +1128,27 @@
       
       $('results').classList.remove('show');
       $('gameArea').focus();
-      game.timer = setInterval(updateStats, 100);
+      
+      // Faster updates for better real-time experience
+      game.timer = setInterval(updateStats, 50); // 20 FPS instead of 10 FPS
       
       if (game.mode === 'multiplayer') {
         $('liveLeaderboard').classList.add('show');
+        // Additional faster multiplayer updates
+        game.multiplayerTimer = setInterval(() => {
+          if (game.mode === 'multiplayer' && multiplayer.roomCode && isFirebaseInitialized) {
+            updateMultiplayerProgress();
+          }
+        }, 200); // Update multiplayer every 200ms
       }
     }
 
     function endGame() {
       game.isActive = false;
       clearInterval(game.timer);
+      if (game.multiplayerTimer) {
+        clearInterval(game.multiplayerTimer);
+      }
       updateStats();
       
       const avgWpm = calculateAverageWPM();
@@ -1077,6 +1160,7 @@
       $('finalChars').textContent = game.correctChars;
       
       $('liveLeaderboard').classList.remove('show');
+      $('winnerAnnouncement').style.display = 'none';
       
       if (game.mode === 'multiplayer' && multiplayer.roomCode && isFirebaseInitialized) {
         finishMultiplayerGame(avgWpm, accuracy);
@@ -1087,6 +1171,7 @@
 
     function newGame() {
       if (game.timer) clearInterval(game.timer);
+      if (game.multiplayerTimer) clearInterval(game.multiplayerTimer);
       game.isActive = false;
       game.gameEnded = false;
       game.duration = parseInt($('timeSelect').value) * 1000;
@@ -1096,9 +1181,11 @@
       $('results').classList.remove('show');
       $('countdownOverlay').classList.remove('show');
       $('liveLeaderboard').classList.remove('show');
+      $('winnerAnnouncement').style.display = 'none';
       
       if (multiplayer.gameRef) {
         multiplayer.gameEnded = false;
+        multiplayer.currentLeader = null;
       }
     }
 
@@ -1183,12 +1270,14 @@
       multiplayer.playersRef = multiplayer.roomRef.child('players');
       multiplayer.gameRef = multiplayer.roomRef.child('game');
       
+      const roomDuration = parseInt($('hostTimeSelect').value);
+      
       multiplayer.roomRef.set({
         hostId: multiplayer.currentUserId,
         gameStarted: false,
         gameEnded: false,
         words: game.wordList,
-        duration: parseInt($('timeSelect').value),
+        duration: roomDuration,
         createdAt: firebase.database.ServerValue.TIMESTAMP
       });
       
@@ -1208,8 +1297,49 @@
       $('roomCodeValue').textContent = multiplayer.roomCode;
       $('roomCodeDisplay').style.display = 'block';
       $('waitingMessage').style.display = 'block';
+      $('hostControls').style.display = 'flex';
+      
+      // Sync time selector
+      $('timeSelect').value = roomDuration;
+      game.duration = roomDuration * 1000;
       
       showToast('Room created');
+    }
+
+    function updateRoomTime() {
+      if (!multiplayer.isHost || !multiplayer.roomRef) {
+        showToast('Host only');
+        return;
+      }
+      
+      const newDuration = parseInt($('hostTimeSelect').value);
+      
+      multiplayer.roomRef.update({
+        duration: newDuration
+      });
+      
+      // Update local time
+      $('timeSelect').value = newDuration;
+      game.duration = newDuration * 1000;
+      $('timeStat').textContent = newDuration;
+      
+      showToast(`Time updated to ${newDuration}s`);
+    }
+
+    function announceWinner(playerName, wpm) {
+      const now = Date.now();
+      if (now - multiplayer.lastWinnerAnnouncement < 3000) return; // Throttle announcements
+      
+      const announcement = $('winnerAnnouncement');
+      announcement.textContent = `🚀 ${playerName} takes the lead with ${wpm} WPM!`;
+      announcement.style.display = 'block';
+      
+      multiplayer.lastWinnerAnnouncement = now;
+      
+      // Hide announcement after 3 seconds
+      setTimeout(() => {
+        announcement.style.display = 'none';
+      }, 3000);
     }
 
     function joinRoom() {
@@ -1244,6 +1374,12 @@
             displayWords();
           }
           
+          // Sync time with room
+          if (roomData.duration) {
+            $('timeSelect').value = roomData.duration;
+            game.duration = roomData.duration * 1000;
+          }
+          
           multiplayer.playersRef.child(multiplayer.currentUserId).set({
             name: multiplayer.playerName,
             progress: 0,
@@ -1260,6 +1396,7 @@
           $('roomCodeValue').textContent = multiplayer.roomCode;
           $('roomCodeDisplay').style.display = 'block';
           $('waitingMessage').style.display = 'none';
+          $('hostControls').style.display = 'none'; // Hide for non-hosts
           
           showToast('Joined room');
         } else {
@@ -1283,11 +1420,19 @@
           });
         }
         updatePlayersDisplay();
+        detectWinnerChange();
       });
       
       multiplayer.roomRef.on('value', (snapshot) => {
         if (snapshot.exists()) {
           const roomData = snapshot.val();
+          
+          // Update duration for non-hosts
+          if (!multiplayer.isHost && roomData.duration) {
+            $('timeSelect').value = roomData.duration;
+            game.duration = roomData.duration * 1000;
+            $('timeStat').textContent = roomData.duration;
+          }
           
           if (roomData.gameStarted === true && !game.isActive && !multiplayer.gameStarted) {
             multiplayer.gameStarted = true;
@@ -1329,24 +1474,56 @@
       updateCursor();
     }
 
+    function detectWinnerChange() {
+      if (!game.isActive || multiplayer.players.size < 2) return;
+      
+      // Find current leader (highest WPM)
+      let currentLeader = null;
+      let highestWPM = 0;
+      
+      multiplayer.players.forEach((player, playerId) => {
+        if (player.wpm > highestWPM) {
+          highestWPM = player.wpm;
+          currentLeader = { id: playerId, name: player.name, wpm: player.wpm };
+        }
+      });
+      
+      // Announce if leader changed and it's not the current user
+      if (currentLeader && 
+          currentLeader.id !== multiplayer.currentLeader?.id && 
+          currentLeader.id !== multiplayer.currentUserId &&
+          currentLeader.wpm > 0) {
+        announceWinner(currentLeader.name, currentLeader.wpm);
+      }
+      
+      multiplayer.currentLeader = currentLeader;
+    }
+
     function updatePlayersDisplay() {
       const container = $('playersList');
       container.innerHTML = '';
       
+      // Sort players by WPM (descending) for better visual hierarchy
       const sortedPlayers = Array.from(multiplayer.players.entries())
-        .sort(([,a], [,b]) => b.progress - a.progress);
+        .sort(([,a], [,b]) => b.wpm - a.wpm);
+      
+      let leaderWPM = 0;
+      if (sortedPlayers.length > 0) {
+        leaderWPM = sortedPlayers[0][1].wpm;
+      }
       
       sortedPlayers.forEach(([playerId, player]) => {
         const playerDiv = document.createElement('div');
         const isCurrentUser = playerId === multiplayer.currentUserId;
+        const isLeader = player.wpm > 0 && player.wpm === leaderWPM && sortedPlayers.length > 1;
         
-        playerDiv.className = `player-card ${isCurrentUser ? 'current-user' : ''}`;
+        playerDiv.className = `player-card ${isCurrentUser ? 'current-user' : ''} ${isLeader ? 'leader' : ''}`;
         
         playerDiv.innerHTML = `
           <div class="player-name">${player.name} ${player.isHost ? '👑' : ''}</div>
           <div class="player-stats">
-            <span>${player.wpm}</span>
-            <span>${player.accuracy}%</span>
+            <span class="player-wpm">${player.wpm} WPM</span>
+            <span class="player-accuracy">${player.accuracy}%</span>
           </div>
           <div class="player-progress">
             <div class="player-progress-bar" style="width: ${player.progress}%"></div>
@@ -1438,13 +1615,15 @@
       
       const isTyping = Date.now() - game.lastTypingTime < 1000;
       
+      // Update more frequently for better real-time experience
       multiplayer.playersRef.child(multiplayer.currentUserId).update({
         progress: progress,
         wpm: currentWpm,
         accuracy: accuracy,
         finished: false,
         isTyping: isTyping,
-        lastTyping: isTyping ? firebase.database.ServerValue.TIMESTAMP : null
+        lastTyping: isTyping ? firebase.database.ServerValue.TIMESTAMP : null,
+        lastUpdate: firebase.database.ServerValue.TIMESTAMP
       });
     }
 
@@ -1533,11 +1712,14 @@
       multiplayer.roomRef = null;
       multiplayer.playersRef = null;
       multiplayer.gameRef = null;
+      multiplayer.currentLeader = null;
       
       $('roomCodeDisplay').style.display = 'none';
       $('waitingMessage').style.display = 'none';
       $('liveLeaderboard').classList.remove('show');
       $('multiplayerResults').style.display = 'none';
+      $('hostControls').style.display = 'none';
+      $('winnerAnnouncement').style.display = 'none';
       updatePlayersDisplay();
     }
 
