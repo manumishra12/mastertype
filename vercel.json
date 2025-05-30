@@ -3,14 +3,14 @@
   "name": "mastertype-game",
   "builds": [
     {
-      "src": "index.html",
+      "src": "mastertype.html",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/mastertype.html"
     }
   ],
   "headers": [
