@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "mastertype-game",
+  "name": "mastertype",
   "builds": [
     {
       "src": "mastertype.html",
@@ -8,6 +8,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/",
+      "dest": "/mastertype.html"
+    },
     {
       "src": "/(.*)",
       "dest": "/mastertype.html"
